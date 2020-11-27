@@ -12,6 +12,7 @@ from mmf.utils.visualize import visualize_images
 from PIL import Image
 from torchvision import transforms
 
+from copy import deepcopy
 
 class HatefulMemesFeaturesDataset(MMFDataset):
     def __init__(self, config, *args, dataset_name="hateful_memes", **kwargs):
@@ -28,19 +29,44 @@ class HatefulMemesFeaturesDataset(MMFDataset):
         sample_info["feature_path"] = f"{feature_path}.npy"
         return sample_info
 
+    def _merge_tensors_or_list(self, container_a, num_a, container_b, num_b):
+        if isinstance(container_a, torch.Tensor):
+            out_container = container_a.clone()
+            out_container[num_a : num_a + num_b - 1] = container_b[1 : num_b]
+            out_container[num_a + num_b - 1:] = 0
+        else:
+            out_container = container_a.copy()
+            out_container += container_b[1:]
+        return out_container
+
+    def _merge_captions(self, text, caption):
+        final_text = {}        
+        num_text_tokens = torch.sum(text['input_mask'])
+        num_caption_tokens = torch.sum(caption['input_mask'])
+        # We will remove the CLS token from the caption
+        num_final_tokens = num_text_tokens + num_caption_tokens - 1
+        keys_to_merge = ['input_ids', 'input_mask', 'text', 'tokens']
+        for k in text.keys():
+            if k in keys_to_merge:
+                final_text[k] = self._merge_tensors_or_list(text[k], num_text_tokens, caption[k], num_caption_tokens)
+            else:
+                final_text[k] = text[k].clone()
+        return final_text
+
     def __getitem__(self, idx):
         sample_info = self.annotation_db[idx]
         sample_info = self.preprocess_sample_info(sample_info)
 
         current_sample = Sample()
-
+        assert 'caption_text' in sample_info, "Gnerated caption text not available"
         processed_text = self.text_processor({"text": sample_info["text"]})
-        current_sample.text = processed_text["text"]
+        processed_caption_text = self.text_processor({"text": sample_info["caption_text"]})
+        merged_processed_text = self._merge_captions(processed_text, processed_caption_text)
+        current_sample.text = merged_processed_text["text"]
         if "input_ids" in processed_text:
-            current_sample.update(processed_text)
-
+            current_sample.update(merged_processed_text)
+        import pdb; pdb.set_trace()
         current_sample.id = torch.tensor(int(sample_info["id"]), dtype=torch.int)
-
         # Instead of using idx directly here, use sample_info to fetch
         # the features as feature_path has been dynamically added
         features = self.features_db.get(sample_info)

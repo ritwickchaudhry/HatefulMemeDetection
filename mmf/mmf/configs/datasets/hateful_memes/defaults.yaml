@@ -21,9 +21,9 @@ dataset_config:
       - hateful_memes/defaults/features/detectron.lmdb
     annotations:
       train:
-      - hateful_memes/defaults/annotations/train.jsonl
+      - hateful_memes/defaults/annotations/train_with_captions.jsonl
       val:
-      - hateful_memes/defaults/annotations/dev_unseen.jsonl
+      - hateful_memes/defaults/annotations/dev_unseen_with_captions.jsonl
       test:
       - hateful_memes/defaults/annotations/test_unseen.jsonl
     max_features: 100
