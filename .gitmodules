@@ -1,3 +1,0 @@
-[submodule "mmf"]
-	path = mmf
-	url = git://github.com/facebookresearch/mmf.git
