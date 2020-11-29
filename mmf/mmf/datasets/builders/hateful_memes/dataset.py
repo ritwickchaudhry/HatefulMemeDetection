@@ -100,6 +100,7 @@ class HatefulMemesImageDataset(MMFDataset):
         self.image_db.transform = self.image_processor
 
     def __getitem__(self, idx):
+        import pdb; pdb.set_trace()
         sample_info = self.annotation_db[idx]
         current_sample = Sample()
 
