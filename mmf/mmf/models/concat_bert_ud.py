@@ -24,7 +24,7 @@ class ConcatBERTUD(BaseModel):
     @classmethod
     def config_path(cls):
         # Relative to user dir root
-        return "configs/models/concat_bert_tutorial/defaults.yaml"
+        return "configs/models/concat_bert_ud/defaults.yaml"
 
     # Each method need to define a build method where the model's modules
     # are actually build and assigned to the model
