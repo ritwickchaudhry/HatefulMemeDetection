@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 from mmf.common.registry import registry
 from mmf.models.base_model import BaseModel
 from mmf.utils.build import (
@@ -65,6 +66,10 @@ class ConcatBERTUD(BaseModel):
         """
         self.language_module = build_text_encoder(self.config.text_encoder)
 
+        self.attention = ImageDefinitionAttention(self.config.modal_hidden_size,
+                                                    self.config.text_hidden_size,
+                                                    self.config.defn_hidden_size)
+
         """
         For classifer, configuration would look like:
         # Specifies the type of the classifier, in this case mlp
@@ -93,12 +98,18 @@ class ConcatBERTUD(BaseModel):
         text_features = self.language_module(text)[1]
         image_features = self.vision_module(image)
 
+        # import pdb; pdb.set_trace()
+        num_defs = [len(defns) for defns in sample_list["definitions"]]
+        defn_ids = [torch.stack([defn["input_ids"] for defn in defns], axis=0) if len(defns) > 0 else [] for defns in sample_list["definitions"]]
+        defn_features = [self.language_module(defn_id.to(text.device))[1] if len(defn_id) > 0 else torch.zeros_like(text_features[0])[None, :] for defn_id in defn_ids]
+
         # Flatten the embeddings before concatenation
         image_features = torch.flatten(image_features, start_dim=1)
         text_features = torch.flatten(text_features, start_dim=1)
+        defn_features = torch.cat([self.attention(image, defn_feats) for image, defn_feats in zip(image_features, defn_features)], axis=0)
 
         # Concatenate the features returned from two modality encoders
-        combined = torch.cat([text_features, image_features], dim=1)
+        combined = torch.cat([text_features, image_features, defn_features], dim=1)
 
         # Pass final tensor to classifier to get scores
         logits = self.classifier(combined)
@@ -110,3 +121,18 @@ class ConcatBERTUD(BaseModel):
 
         # MMF will automatically calculate loss
         return output
+
+
+class ImageDefinitionAttention(nn.Module):
+    def __init__(self, image_dim, definition_dim, output_dim):
+        super().__init__()
+        self.attention = nn.MultiheadAttention(image_dim, 1, kdim=definition_dim, vdim=definition_dim)
+        self.fc = nn.Linear(image_dim, output_dim)
+    
+    def forward(self, image, definitions):
+        # Image - (I,) = (2048,)
+        # Definitions - (L,D) = (N, 768)
+        output,_ = self.attention(image[None,None,:], definitions[:,None,:], definitions[:,None,:]) # (1,1,2048)
+        output = self.fc(output)
+        output = torch.flatten(output, start_dim=1)
+        return output # (1, output_dim)

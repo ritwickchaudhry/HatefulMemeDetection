@@ -100,7 +100,6 @@ class HatefulMemesImageDataset(MMFDataset):
         self.image_db.transform = self.image_processor
 
     def __getitem__(self, idx):
-        import pdb; pdb.set_trace()
         sample_info = self.annotation_db[idx]
         current_sample = Sample()
 
@@ -113,6 +112,10 @@ class HatefulMemesImageDataset(MMFDataset):
 
         # Get the first image from the set of images returned from the image_db
         current_sample.image = self.image_db[idx]["images"][0]
+
+        defns = [defn for val in sample_info["np_chunks"].values()  for defn in val]
+        processed_defns = [self.text_processor({"text": defn}) for defn in defns]
+        current_sample.definitions = processed_defns
 
         if "label" in sample_info:
             current_sample.targets = torch.tensor(

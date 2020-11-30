@@ -7,6 +7,8 @@ model_config:
     modal_hidden_size: 2048
     # Dimension of the embedding finally returned by the text encoder
     text_hidden_size: 768
+    # Dimension of the attended definition finally returned by the attention layer
+    defn_hidden_size: 768
     # Used when classification head is activated
     num_labels: 2
     # Number of features extracted out per image
@@ -34,7 +36,7 @@ model_config:
       params:
         # 2048 + 768 in case of features
         # Modal_Dim * Number of embeddings + Text Dim
-        in_dim: 2816
+        in_dim: 3584
         out_dim: 2
         hidden_dim: 768
         num_layers: 2
