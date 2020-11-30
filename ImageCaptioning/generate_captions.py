@@ -59,7 +59,7 @@ class Captioner:
 		vocab_size = len(self.rev_word_map)
 
 		# Read image and process
-		img = imread(image_path)
+		img = imread(image_path, mode='RGB')
 		if len(img.shape) == 2:
 			img = img[:, :, np.newaxis]
 			img = np.concatenate([img, img, img], axis=2)
@@ -228,7 +228,7 @@ class Captioner:
 
 	def run(self):
 		output_annotations = []
-		for ann in tqdm(self.annotation_db[:5]):
+		for ann in tqdm(self.annotation_db):
 			# import time
 			# start_time = time.time()
 			# # Encode, decode with attention and beam search
