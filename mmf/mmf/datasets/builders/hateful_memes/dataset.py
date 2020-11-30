@@ -63,7 +63,6 @@ class HatefulMemesFeaturesDataset(MMFDataset):
         processed_caption_text = self.text_processor({"text": sample_info["caption_text"]})
         merged_processed_text = self._merge_captions(processed_text, processed_caption_text)
         current_sample.text = merged_processed_text["text"]
-        import pdb; pdb.set_trace()
         if "input_ids" in processed_text:
             current_sample.update(merged_processed_text)
         current_sample.id = torch.tensor(int(sample_info["id"]), dtype=torch.int)
