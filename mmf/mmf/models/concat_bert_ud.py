@@ -132,6 +132,7 @@ class ImageDefinitionAttention(nn.Module):
     def forward(self, image, definitions):
         # Image - (I,) = (2048,)
         # Definitions - (L,D) = (N, 768)
+        import pdb; pdb.set_trace()
         output,_ = self.attention(image[None,None,:], definitions[:,None,:], definitions[:,None,:]) # (1,1,2048)
         output = self.fc(output)
         output = torch.flatten(output, start_dim=1)

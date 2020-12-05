@@ -125,15 +125,17 @@ class ConcatBERT(BaseModel):
 class ImageDefinitionAttention(nn.Module):
     def __init__(self, image_dim, definition_dim, output_dim):
         super().__init__()
-        self.attention = nn.MultiheadAttention(image_dim, 1, kdim=definition_dim, vdim=definition_dim)
-        self.fc = nn.Linear(image_dim, output_dim)
+        self.fc_image = nn.Linear(image_dim, definition_dim)
+        self.attention = nn.MultiheadAttention(definition_dim, 3)
     
     def forward(self, image, definitions):
         # Image - (I,) = (2048,)
         # Definitions - (L,D) = (N, 768)
-        output,_ = self.attention(image[None,None,:], definitions[:,None,:], definitions[:,None,:]) # (1,1,2048)
-        output = self.fc(output)
-        output = torch.flatten(output, start_dim=1)
+        # attention input - 
+        # image - 2048 - 768, def - 768 - 768 (key)
+        query = self.fc_image(image[None,:])
+        output, _ = self.attention(query[:, None, :], definitions[:, None, :], definitions[:, None, :]) # (1,1,2048)
+        output = output.squeeze(1)
         return output # (1, output_dim)
 
 
