@@ -3,6 +3,7 @@ import collections
 from copy import deepcopy
 
 import torch
+import torch.nn as nn
 from mmf.common.registry import registry
 from mmf.models.base_model import BaseModel
 from mmf.modules.encoders import MultiModalEncoderBase
@@ -74,7 +75,11 @@ class ConcatBERT(BaseModel):
         classifier_config = deepcopy(self.config.classifier)
         classifier_config.params.in_dim = num_features * self.config.modal_hidden_size
         classifier_config.params.in_dim += self.config.text_hidden_size
+        classifier_config.params.in_dim += self.config.definition_embedding_size
         self.classifier = build_classifier_layer(classifier_config)
+        self.attention = ImageDefinitionAttention(num_features * self.config.modal_hidden_size,
+                                                    self.config.definition_embedding_size,
+                                                    self.config.definition_embedding_size)
 
         if self.config.freeze_text or self.config.freeze_complete_base:
             for p in self.base.text.parameters():
@@ -94,12 +99,14 @@ class ConcatBERT(BaseModel):
             self.base, lr * finetune_lr_multiplier
         )
         parameters += get_bert_configured_parameters(self.classifier, lr)
+        parameters += get_bert_configured_parameters(self.attention, lr)
         return parameters
 
     def forward(self, sample_list):
         text = sample_list.input_ids
         mask = sample_list.input_mask
         segment = sample_list.segment_ids
+        defn_features = sample_list.definitions
 
         if self._is_direct_features_input:
             modal = sample_list.image_feature_0
@@ -107,10 +114,27 @@ class ConcatBERT(BaseModel):
             modal = sample_list.image
 
         text_embedding, modal_embedding = self.base(text, modal, [mask, segment])
-        embedding = torch.cat([text_embedding, modal_embedding], dim=-1)
+        # import pdb; pdb.set_trace()
+        defn_features = torch.cat([self.attention(image, torch.from_numpy(defn_feats).to(image.device)) for image, defn_feats in zip(modal_embedding, defn_features)], axis=0)
+
+        embedding = torch.cat([text_embedding, modal_embedding, defn_features], dim=-1)
         output = {}
         output["scores"] = self.classifier(embedding)
         return output
+
+class ImageDefinitionAttention(nn.Module):
+    def __init__(self, image_dim, definition_dim, output_dim):
+        super().__init__()
+        self.attention = nn.MultiheadAttention(image_dim, 1, kdim=definition_dim, vdim=definition_dim)
+        self.fc = nn.Linear(image_dim, output_dim)
+    
+    def forward(self, image, definitions):
+        # Image - (I,) = (2048,)
+        # Definitions - (L,D) = (N, 768)
+        output,_ = self.attention(image[None,None,:], definitions[:,None,:], definitions[:,None,:]) # (1,1,2048)
+        output = self.fc(output)
+        output = torch.flatten(output, start_dim=1)
+        return output # (1, output_dim)
 
 
 @registry.register_model("concat_bow")

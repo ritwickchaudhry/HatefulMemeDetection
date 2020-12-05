@@ -112,10 +112,9 @@ class HatefulMemesImageDataset(MMFDataset):
 
         # Get the first image from the set of images returned from the image_db
         current_sample.image = self.image_db[idx]["images"][0]
-
-        defns = [defn for val in sample_info["np_chunks"].values()  for defn in val]
-        processed_defns = [self.text_processor({"text": defn}) for defn in defns]
-        current_sample.definitions = processed_defns
+        
+        # Load the pre-computed definition embeddings
+        current_sample.definitions = np.load(os.path.join(self.config.data_dir, self.config.definitions, "{}.npz".format(sample_info["id"])))["feats"]
 
         if "label" in sample_info:
             current_sample.targets = torch.tensor(

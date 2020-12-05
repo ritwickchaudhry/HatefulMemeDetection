@@ -26,6 +26,7 @@ dataset_config:
       - hateful_memes/defaults/annotations/dev_unseen_ub_def.jsonl
       test:
       - hateful_memes/defaults/annotations/test_unseen_ub_def.jsonl
+    definitions: hateful_memes/defaults/definition_features/
     max_features: 100
     processors:
       text_processor:
