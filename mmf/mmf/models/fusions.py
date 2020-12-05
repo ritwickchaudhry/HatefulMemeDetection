@@ -96,7 +96,7 @@ class ConcatBERT(BaseModel):
             self.base, lr * finetune_lr_multiplier
         )
         parameters += get_bert_configured_parameters(self.classifier, lr)
-        parameters += get_bert_configured_parameters(self.attention, lr)
+        # parameters += get_bert_configured_parameters(self.attention, lr)
         return parameters
 
     def forward(self, sample_list):
