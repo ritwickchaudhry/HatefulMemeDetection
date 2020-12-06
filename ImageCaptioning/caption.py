@@ -149,7 +149,7 @@ def caption_image_beam_search(encoder, decoder, image_path, word_map, beam_size=
 	return seq, alphas
 
 
-def visualize_att_separable(image_path, seq, alphas, rev_word_map, smooth=True):
+def visualize_att_separable(image_path, seq, alphas, rev_word_map, smooth=True, tag=None):
 	"""
 	Visualizes caption with weights at every word.
 
@@ -166,8 +166,14 @@ def visualize_att_separable(image_path, seq, alphas, rev_word_map, smooth=True):
 
 	words = [rev_word_map[ind] for ind in seq]
 
-	if not os.path.exists('Results'):
-		os.makedirs('Results')
+
+	if tag is not None:
+		out_dir = os.path.join('Results', tag)
+	else:
+		out_dir = 'Results'
+
+	if not os.path.exists(out_dir):
+		os.makedirs(out_dir)
 
 	for t in range(len(words)):
 		if t > 50:
@@ -194,7 +200,7 @@ def visualize_att_separable(image_path, seq, alphas, rev_word_map, smooth=True):
 			plt.imshow(alpha, alpha=0.8)
 		plt.set_cmap(cm.Greys_r)
 		plt.axis('off')
-		plt.savefig(os.path.join("Results", '{}.png'.format(t)), bbox_inches='tight')
+		plt.savefig(os.path.join(out_dir, '{}.png'.format(t)), bbox_inches='tight')
 
 def visualize_att(image_path, seq, alphas, rev_word_map, smooth=True):
 	"""
@@ -238,7 +244,7 @@ def visualize_att(image_path, seq, alphas, rev_word_map, smooth=True):
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Show, Attend, and Tell - Tutorial - Generate Caption')
 
-	parser.add_argument('--img', '-i', help='path to image')
+	parser.add_argument('--path', '-i', help='path to image or directory')
 	parser.add_argument('--model', '-m', help='path to model')
 	parser.add_argument('--word_map', '-wm', help='path to word map JSON')
 	parser.add_argument('--beam_size', '-b', default=5, type=int, help='beam size for beam search')
@@ -262,10 +268,24 @@ if __name__ == '__main__':
 	rev_word_map = {v: k for k, v in word_map.items()}  # ix2word
 
 	import time
-	start_time = time.time()
-	# Encode, decode with attention and beam search
-	seq, alphas = caption_image_beam_search(encoder, decoder, args.img, word_map, args.beam_size)
-	alphas = torch.FloatTensor(alphas)
-	print("{:.2f} seconds".format(time.time() - start_time))
-	# Visualize caption and attention of best sequence
-	visualize_att_separable(args.img, seq, alphas, rev_word_map, args.smooth)
+	
+	if os.path.isdir(args.path):
+		import glob
+		image_paths = glob.glob(os.path.join(args.path, '*.png'))
+		for img_path in image_paths:
+			start_time = time.time()
+			# Encode, decode with attention and beam search
+			seq, alphas = caption_image_beam_search(encoder, decoder, img_path, word_map, args.beam_size)
+			alphas = torch.FloatTensor(alphas)
+			print("{:.2f} seconds".format(time.time() - start_time))
+			tag = img_path.split('/')[-1].split('.')[0]
+			visualize_att_separable(img_path, seq, alphas, rev_word_map, args.smooth, tag=tag)
+	else:
+		start_time = time.time()
+		# Encode, decode with attention and beam search
+		seq, alphas = caption_image_beam_search(encoder, decoder, args.img, word_map, args.beam_size)
+		alphas = torch.FloatTensor(alphas)
+		print("{:.2f} seconds".format(time.time() - start_time))
+		visualize_att_separable(args.path, seq, alphas, rev_word_map, args.smooth)
+
+	
