@@ -77,8 +77,7 @@ class ConcatBERT(BaseModel):
         classifier_config.params.in_dim += self.config.text_hidden_size
         classifier_config.params.in_dim += self.config.definition_embedding_size
         self.classifier = build_classifier_layer(classifier_config)
-        self.attention = ImageDefinitionAttention(num_features * self.config.modal_hidden_size,
-                                                    self.config.definition_embedding_size,
+        self.attention = ImageDefinitionAttention(num_features * self.config.modal_hidden_size + self.config.text_hidden_size,
                                                     self.config.definition_embedding_size)
 
         if self.config.freeze_text or self.config.freeze_complete_base:
@@ -115,7 +114,8 @@ class ConcatBERT(BaseModel):
 
         text_embedding, modal_embedding = self.base(text, modal, [mask, segment])
         # import pdb; pdb.set_trace()
-        defn_features = torch.cat([self.attention(image, torch.from_numpy(defn_feats).to(image.device)) for image, defn_feats in zip(modal_embedding, defn_features)], axis=0)
+        defn_features = torch.cat([self.attention(torch.cat(image_embed, text_embed), torch.from_numpy(defn_feats).to(image.device))
+                                    for image_embed, text_embed, defn_feats in zip(modal_embedding, text_embedding, defn_features)], axis=0)
 
         embedding = torch.cat([text_embedding, modal_embedding, defn_features], dim=-1)
         output = {}
@@ -123,20 +123,18 @@ class ConcatBERT(BaseModel):
         return output
 
 class ImageDefinitionAttention(nn.Module):
-    def __init__(self, image_dim, definition_dim, output_dim):
+    def __init__(self, query_dim, definition_dim):
         super().__init__()
-        self.fc_image = nn.Linear(image_dim, definition_dim)
+        self.fc_image = nn.Linear(query_dim, definition_dim)
         self.attention = nn.MultiheadAttention(definition_dim, 3)
     
     def forward(self, image, definitions):
-        # Image - (I,) = (2048,)
+        # Image - (I,) = (2048+768,)
         # Definitions - (L,D) = (N, 768)
-        # attention input - 
-        # image - 2048 - 768, def - 768 - 768 (key)
         query = self.fc_image(image[None,:])
-        output, _ = self.attention(query[:, None, :], definitions[:, None, :], definitions[:, None, :]) # (1,1,2048)
+        output, _ = self.attention(query[:, None, :], definitions[:, None, :], definitions[:, None, :]) # (1,1,768)
         output = output.squeeze(1)
-        return output # (1, output_dim)
+        return output
 
 
 @registry.register_model("concat_bow")
