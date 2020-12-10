@@ -77,8 +77,7 @@ class ConcatBERT(BaseModel):
         classifier_config.params.in_dim += self.config.text_hidden_size
         classifier_config.params.in_dim += self.config.definition_embedding_size
         self.classifier = build_classifier_layer(classifier_config)
-        self.attention = ImageDefinitionAttention(num_features * self.config.modal_hidden_size + self.config.text_hidden_size,
-                                                    self.config.definition_embedding_size)
+        self.attention = ImageDefinitionAttention(self.config.text_hidden_size, self.config.definition_embedding_size)
 
         if self.config.freeze_text or self.config.freeze_complete_base:
             for p in self.base.text.parameters():
@@ -114,8 +113,8 @@ class ConcatBERT(BaseModel):
 
         text_embedding, modal_embedding = self.base(text, modal, [mask, segment])
         # import pdb; pdb.set_trace()
-        defn_features = torch.cat([self.attention(torch.cat(image_embed, text_embed), torch.from_numpy(defn_feats).to(image.device))
-                                    for image_embed, text_embed, defn_feats in zip(modal_embedding, text_embedding, defn_features)], axis=0)
+        defn_features = torch.cat([self.attention(text_embed, torch.from_numpy(defn_feats).to(text_embed.device))
+                                    for text_embed, defn_feats in zip(text_embedding, defn_features)], axis=0)
 
         embedding = torch.cat([text_embedding, modal_embedding, defn_features], dim=-1)
         output = {}
