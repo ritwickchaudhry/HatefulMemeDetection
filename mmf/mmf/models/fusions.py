@@ -111,7 +111,7 @@ class ConcatBERT(BaseModel):
 
         text_embedding, modal_embedding = self.base(text, modal, [mask, segment])
         # import pdb; pdb.set_trace()
-        defn_features = torch.stack([torch.from_numpy(defn_feats).to(image.device)[0] for defn_feats in defn_features], axis=0)
+        defn_features = torch.stack([torch.from_numpy(defn_feats).to(modal_embedding.device)[0] for defn_feats in defn_features], axis=0)
 
         embedding = torch.cat([text_embedding, modal_embedding, defn_features], dim=-1)
         output = {}
