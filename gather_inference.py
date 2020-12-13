@@ -29,7 +29,7 @@ def run(args):
 		ann = annotations[int(img_id)]
 		# to_write = "{},{},{},{},{},{}\n".format(img_id, ann['img'], ann['text'], ann['label'], prob, pred)
 		# outfile.write(to_write)
-		df = df.append([{'Image ID': img_id, 'Image Path': ann['img'], 'Text': ann['text'], 'GT Label': ann['label'], 'Score': prob, 'Prediction': pred}])
+		df = df.append([{'Image ID': img_id, 'Image Path': ann['img'], 'Text': ann['text'], 'Caption': ann['caption_text'], 'GT Label': ann['label'], 'Score': prob, 'Prediction': pred}])
 	df.to_csv(args.output)
 	# print(annotations)
 

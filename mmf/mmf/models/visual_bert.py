@@ -536,7 +536,7 @@ class VisualBERT(BaseModel):
             image_dim = image_dim.unsqueeze(-1)
             assert len(image_dim.size()) == len(image_mask.size())
         image_mask = image_mask < image_dim
-		image_mask = image_mask.fill_(0)	
+        image_mask = image_mask.fill_(0)	
         sample_list["image_mask"] = image_mask.long()
 
         return sample_list
